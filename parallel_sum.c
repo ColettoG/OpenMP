@@ -1,16 +1,21 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <omp.h>
 
 int main() {
-    // Exemplo de lista
-    int arr[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-    int n   = sizeof(arr) / sizeof(arr[0]);
+    const int n = 50;
+    int arr[n];
     int mid = n / 2;
 
-    // Buffer para as duas somas parciais
+    // Inicializa gerador de aleatórios
+    srand((unsigned)time(NULL));
+    for (int i = 0; i < n; i++) {
+        arr[i] = rand() % 100;  // valores de 0 a 99
+    }
+
     long part_sum[2] = { 0, 0 };
 
-    // Imprime número de processadores disponíveis
     printf("Número de processadores disponíveis: %d\n", omp_get_num_procs());
 
     // --- Somatório paralelo ---
