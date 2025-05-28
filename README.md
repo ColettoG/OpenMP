@@ -21,8 +21,9 @@ gcc -fopenmp parallel_sum.c -o parallel_sum
 Após compilar, execute:
 
 ```bash
-./parallel_sum
+./parallel_sum <número de threads>
 ```
+obs: se você não passar os argumentos será utilizada um número de threads padrão de 2 
 
 O programa exibirá:
 

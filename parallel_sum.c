@@ -3,29 +3,46 @@
 #include <time.h>
 #include <omp.h>
 
-int main() {
+int main(int argc, char *argv[]) {
     const int n = 50;
-    int arr[n];
-    int mid = n / 2;
-
-    // Inicializa gerador de aleatórios
-    srand((unsigned)time(NULL));
-    for (int i = 0; i < n; i++) {
-        arr[i] = rand() % 100;  // valores de 0 a 99
+    int *arr = malloc(n * sizeof(int));
+    if (!arr) {
+        perror("malloc");
+        return 1;
     }
 
-    long part_sum[2] = { 0, 0 };
+    // Número de threads por argumento, ou padrão 2
+    int n_threads = 2;
+    if (argc > 1) {
+        n_threads = atoi(argv[1]);
+        if (n_threads < 1) n_threads = 1;
+        if (n_threads > n) n_threads = n;
+    }
+    omp_set_num_threads(n_threads);
 
-    printf("Número de processadores disponíveis: %d\n", omp_get_num_procs());
+    // Gera lista aleatória
+    srand((unsigned)time(NULL));
+    for (int i = 0; i < n; i++) {
+        arr[i] = rand() % 100;
+    }
 
-    // --- Somatório paralelo ---
+    long *part_sum = calloc(n_threads, sizeof(long));
+    if (!part_sum) {
+        perror("calloc");
+        free(arr);
+        return 1;
+    }
+
+    printf("Threads: %d  |  Tamanho do vetor: %d\n", n_threads, n);
+
+    // --- Soma paralela ---
     double t0 = omp_get_wtime();
-
-    #pragma omp parallel num_threads(2)
+    #pragma omp parallel
     {
-        int id    = omp_get_thread_num();
-        int start = id * mid;
-        int end   = (id == 0 ? mid : n);
+        int id = omp_get_thread_num();
+        int chunk = n / n_threads;
+        int start = id * chunk;
+        int end = (id == n_threads - 1) ? n : start + chunk;
 
         long local_sum = 0;
         for (int i = start; i < end; i++) {
@@ -33,28 +50,28 @@ int main() {
         }
         part_sum[id] = local_sum;
     }
-
-    long parallel_sum = part_sum[0] + part_sum[1];
+    long parallel_sum = 0;
+    for (int i = 0; i < n_threads; i++) {
+        parallel_sum += part_sum[i];
+    }
     double t1 = omp_get_wtime();
-    double parallel_time = t1 - t0;
 
-    // --- Somatório serial ---
+    // --- Soma serial ---
     double t2 = omp_get_wtime();
-
     long serial_sum = 0;
     for (int i = 0; i < n; i++) {
         serial_sum += arr[i];
     }
-
     double t3 = omp_get_wtime();
-    double serial_time = t3 - t2;
 
     // --- Resultados ---
     printf("\nResultados:\n");
-    printf("  Soma paralela: %ld  (%.6f s)\n", parallel_sum, parallel_time);
-    printf("  Soma serial:  %ld  (%.6f s)\n", serial_sum,  serial_time);
+    printf("  Soma paralela: %ld  (%.6f s)\n", parallel_sum, t1 - t0);
+    printf("  Soma serial:  %ld  (%.6f s)\n", serial_sum,  t3 - t2);
     printf("  Comparação:   %s\n",
            (parallel_sum == serial_sum) ? "iguais" : "diferentes");
 
+    free(arr);
+    free(part_sum);
     return 0;
 }
